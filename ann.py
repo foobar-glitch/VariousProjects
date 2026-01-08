@@ -42,13 +42,32 @@ def processImage(imagePath):
     img = img.convert('L')
     img = img.resize((28,28))
     img_array = np.array(img)
-    img_array = img_array / 255.0
-    img_array = img_array.flatten()
+    img_array = img_array.flatten().reshape(-1,1) / 255.0
     return img_array
 
 
-def calcOutput():
-    pass
+def runNetwork(
+        xPictureVector: np.array, 
+        inputLayerWeights: np.array, inputLayerBias: np.array,
+        hiddenLayerWeights: np.array, hiddenLayerBias: np.array,
+        outputLayerWeights: np.array, outputLayerBias: np.array
+    ):
+    zInputLayer =  np.add(inputLayerWeights @ xPictureVector, inputLayerBias)
+    aInputLayer = relu(zInputLayer)
+
+    hiddenLayerA = np.zeros((numberOfHiddenLayers, hiddenLayerSize, 1), dtype=float)
+    hiddenLayerZ = np.zeros((numberOfHiddenLayers, hiddenLayerSize, 1), dtype=float)
+
+    hiddenLayerZ[0] = np.add(hiddenLayerWeights[0] @ aInputLayer, hiddenLayerBias[0])
+    hiddenLayerA[0] = relu(hiddenLayerZ[0])
+
+    for i in range(1, numberOfHiddenLayers):
+        hiddenLayerZ[i] = np.add(hiddenLayerWeights[i] @ hiddenLayerA[i-1], hiddenLayerBias[i])
+        hiddenLayerA[i] = relu(hiddenLayerZ[i])
+    
+    zOutputLayer = np.add(outputLayerWeights @ hiddenLayerA[numberOfHiddenLayers-1], outputLayerBias)
+    outProbs = softmax(zOutputLayer)
+    return outProbs, zOutputLayer, hiddenLayerA, hiddenLayerZ, aInputLayer, zInputLayer
 
 inputLayerSize = 784
 hiddenLayerSize = 500
@@ -71,7 +90,12 @@ hiddenLayerBias = np.random.randn(numberOfHiddenLayers, hiddenLayerSize, 1) * np
 trainingSetSize = y_train.size-1
 learningRate = 0.01
 
+
+#testImage = processImage("img/seven.png")
+#print(test)
+
 for j in range(trainingSetSize):
+    if j == 16000: break
     correctProb = np.zeros((10,1))
     correctProb[y_train[j]]=1
 
@@ -80,6 +104,8 @@ for j in range(trainingSetSize):
 
     # x_picture: singular picture
     xPictureVector = x_train[j].flatten().reshape(-1, 1) / 255.0
+
+    
     zInputLayer =  np.add(inputLayerWeights @ xPictureVector, inputLayerBias)
     aInputLayer = relu(zInputLayer)
     
@@ -92,10 +118,11 @@ for j in range(trainingSetSize):
     
     zOutputLayer = np.add(outputLayerWeights @ hiddenLayerA[numberOfHiddenLayers-1], outputLayerBias)
     outProbs = softmax(zOutputLayer)
-
-    print(y_train[j])
-    print(outProbs.round(4).tolist())
-    print("=====")
+    
+    if j%1000 == 0:
+        print(y_train[j])
+        print(outProbs.round(4).tolist())
+        print("=====")
 
     #gradOutputBias = gammaOutput
     gammaOutput = outProbs-correctProb
@@ -132,4 +159,16 @@ for j in range(trainingSetSize):
 
 
 
+"""
+## Test
+testImage = processImage("img/seven.png")
+outProbs, zOutputLayer, hiddenLayerA, hiddenLayerZ, aInputLayer, zInputLayer = runNetwork(
+        testImage, 
+        inputLayerWeights, inputLayerBias,
+        hiddenLayerWeights, hiddenLayerBias,
+        outputLayerWeights, outputLayerBias
+    )
 
+print("=====Test======")
+print(outProbs)"
+"""
